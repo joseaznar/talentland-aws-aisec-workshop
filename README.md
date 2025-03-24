@@ -1,0 +1,1 @@
+# talentland-aws-aisec-workshop

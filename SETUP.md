@@ -22,7 +22,7 @@ You need to deploy the infrastructure for each one of the students that will be 
 
 ## Cleanup
 
-Open [Amazon S3 console]{href="https://us-east-1.console.aws.amazon.com/s3/buckets"} .
+Open [Amazon S3 console](https://us-east-1.console.aws.amazon.com/s3/buckets).
 
 Empty the bucket bedrock-guardrails-workshop-static-website-<student-ID> (do this for each one of the student's buckets).
 

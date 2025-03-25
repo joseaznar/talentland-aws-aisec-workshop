@@ -10,6 +10,14 @@ First you need to create the AWS Account using a new email and your credit card 
 
 Now you should create an AWS Organization and an admin user for that organization (so you only login to that organization with an user different from root).
 
+Create a role in IAM so the students have permissions to update the **Lambdas** and create **Guardrails**.
+
+Create a group in IAM for the Workshop attendees and assign the role previously created.
+
+Create an email using Proton Mail or another free email service for the students and invite those emails to the AWS Organization.
+
+Add those new users to the group previously created.
+
 Install the base infrastructure using that new user with the following [Cloudformation Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/new?&templateURL=https%3A%2F%2Fws-assets-prod-iad-r-iad-ed304a55c2ca1aee.s3.us-east-1.amazonaws.com%2F0720c7c4-fb23-4e43-aa9f-036fc07f46b2%2Finfra%2Fpackage.yaml) (or use the package.yaml file in this repository).
 
 Choose **Next** in the bottom right of the page. In **Specify stack details** page, enter `bedrock-guardrails-workshop-<student ID>` for **Stack name**. Let everything else as default setting, and then choose **Next**.

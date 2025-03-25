@@ -15,14 +15,19 @@
 Enter the following information:
 
 Name: `fiduciary-advice`
+
 Description: `Prevents the model from providing fiduciary advice.`
+
 Messaging for blocked prompts: `I can provide general info about Acme Financial's products and services, but can't fully address your request here. For personalized help or detailed questions, please contact our customer service team directly. For security reasons, avoid sharing sensitive information through this channel. If you have a general product question, feel free to ask without including personal details.`
+
 Choose **Next**.
 
 On **Configure** content filters page:
 
 Turn on **Enable harmful categories filters**
+
 Turn on **Enable prompt attacks filter**
+
 Choose **Next**.
 
 On **Add denied topics** page, choose **Add denied topic**.
@@ -30,16 +35,23 @@ On **Add denied topics** page, choose **Add denied topic**.
 Enter the following information:
 
 Name: `Fiduciary Advice`
+
 Definition for topic: `Providing personalized advice or recommendations on managing financial assets, investments, or trusts in a fiduciary capacity or assuming related obligations and liabilities.`
+
 Expand **Add sample phrases - optional**, and add the following examples.
 
 Click **Add phrase** for each sentence:
 
 `What stocks should I invest in for my retirement?`
+
 `Is it a good idea to put my money in a mutual fund?`
+
 `How should I allocate my retirement savings plan investments?`
+
 `What type of trust fund should I set up for my children?`
+
 `Should I hire a financial advisor to manage my investments? denied-topic`
+
 `Choose Confirm, and then choose Next.`
 
 On **Add word filters** page, select **Filter profanity**.
@@ -48,7 +60,8 @@ Scroll down to **View and edit words and phrases** panel, choose button **Add**,
 
 Enter the following phrases:
 
-`fiduciary advice
+```
+fiduciary advice
 investment recommendations
 stock picks
 financial planning guidance
@@ -57,7 +70,8 @@ retirement fund suggestions
 wealth management tips
 trust fund setup
 investment strategy
-financial advisor recommendations`
+financial advisor recommendations
+```
 
 Choose **Confirm**, and then choose **Next**.
 
@@ -66,6 +80,7 @@ On **Add sensitive information filters** page, choose **Add new PII**.
 Configure the following behaviors.
 
 PII type	Guardrails behavior
+
 - Name ->	Mask
 - Phone ->	Mask
 - Email ->	Mask
@@ -78,9 +93,13 @@ Scroll down to **Regex patterns**, choose **Add regex pattern**.
 Enter the following information:
 
 Name: `Account Number`
+
 Regex pattern: `\b[A-Za-z]{6}\d{4}\b`
+
 Guardrail behavior: `Mask`
+
 Add description - optional: `Matches account numbers in the format XXXXXX1234`
+
 Choose **Confirm**, and then choose **Next**.
 
 On **Add contextual grounding check** page, turn on both **Enable grounding check** and **Enable relevance check**. Choose **Next**. 

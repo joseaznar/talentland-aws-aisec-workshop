@@ -24,12 +24,12 @@ You need to deploy the infrastructure for each one of the students that will be 
 
 Open [Amazon S3 console](https://us-east-1.console.aws.amazon.com/s3/buckets).
 
-Empty the bucket bedrock-guardrails-workshop-static-website-<student-ID> (do this for each one of the student's buckets).
+Empty the bucket `bedrock-guardrails-workshop-static-website-<student-ID>` (do this for each one of the student's buckets).
 
-Open AWS CloudFormation console .
+Open AWS CloudFormation console.
 
-Delete stack bedrock-guardrails-workshop-<student-ID> (do this for each one of the student's buckets).
+Delete stack `bedrock-guardrails-workshop-<student-ID>` (do this for each one of the student's buckets).
 
-Open Amazon CloudWatch Log groups.
+Open **Amazon CloudWatch Log groups**.
 
-Delete all log group with prefix /aws/lambda/bedrock-guardrails-workshop.
+Delete all log group with prefix `/aws/lambda/bedrock-guardrails-workshop`.

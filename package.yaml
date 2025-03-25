@@ -1,0 +1,488 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Template to create necessary resources for Bedrock Guardrails workshop. Currently only support deployment in regions that support Amazon Bedrock - https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-regions.html. '
+
+Mappings:
+  RegionMap:
+    ap-northeast-1:
+      WsBucket: "ws-assets-prod-iad-r-nrt-2cb4b4649d0e0f94"
+    ap-south-1:
+      WsBucket: "ws-assets-prod-iad-r-bom-431207042d319a2d"
+    ap-southeast-1:
+      WsBucket: "ws-assets-prod-iad-r-sin-694a125e41645312"
+    ap-southeast-2:
+      WsBucket: "ws-assets-prod-iad-r-syd-b04c62a5f16f7b2e"
+    ca-central-1:
+      WsBucket: "ws-assets-prod-iad-r-yul-5c2977cd61bca1f3"
+    eu-central-1:
+      WsBucket: "ws-assets-prod-iad-r-fra-b129423e91500967"
+    eu-west-1:
+      WsBucket: "ws-assets-prod-iad-r-dub-85e3be25bd827406"
+    eu-west-2:
+      WsBucket: "ws-assets-prod-iad-r-lhr-cc4472a651221311"
+    eu-west-3:
+      WsBucket: "ws-assets-prod-iad-r-cdg-9e76383c31ad6229"
+    sa-east-1:
+      WsBucket: "ws-assets-prod-iad-r-gru-527b8c19222c1182"
+    us-east-1:
+      WsBucket: "ws-assets-prod-iad-r-iad-ed304a55c2ca1aee"
+    us-west-2:
+      WsBucket: "ws-assets-prod-iad-r-pdx-f3b3f9f1a7d6a3d0"
+
+Parameters:
+  WorkshopBucketPrefix:
+    Type: String
+    Default: 0720c7c4-fb23-4e43-aa9f-036fc07f46b2
+    Description: The S3 key prefix for the assets.
+
+Resources:
+  ## WebSocket API Gateway
+  WebSocketAPI:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${AWS::StackName}-websocket-api'
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: '$request.body.action'
+
+  GuardrailsWebSocketAPI:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${AWS::StackName}-guardrails-websocket-api'
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: '$request.body.action'
+
+  ## Lambda Function
+  ConnectLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-connect-lambda'
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def handler(event, context):
+            return {
+              "statusCode": 200,
+              "body": "Success"
+            }
+      Runtime: python3.12
+
+  DisconnectLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-disconnect-lambda'
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def handler(event, context):
+            return {
+              "statusCode": 200,
+              "body": "Success"
+            }
+      Runtime: python3.12
+
+  BackendLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-backend-lambda'
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt BackendLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: 
+          Fn::FindInMap:
+            - RegionMap
+            - Ref: AWS::Region
+            - WsBucket
+        S3Key:  !Sub '${WorkshopBucketPrefix}/lambda/message_lambda.zip'
+      Timeout: 120
+      Runtime: python3.12
+
+  GuardrailsBackendLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-guardrails-backend-lambda'
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt BackendLambdaExecutionRole.Arn
+      Code:
+        S3Bucket: 
+          Fn::FindInMap:
+            - RegionMap
+            - Ref: AWS::Region
+            - WsBucket
+        S3Key:  !Sub '${WorkshopBucketPrefix}/lambda/message_lambda.zip'
+      Timeout: 120
+      Runtime: python3.12
+
+  ## Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  BackendLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayInvokeFullAccess
+
+  ## API Gateway Integration with Lambda
+  ConnectLambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketAPI
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ConnectLambda.Arn}/invocations'
+
+  DisconnectLambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketAPI
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DisconnectLambda.Arn}/invocations'
+
+  BackendLambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketAPI
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BackendLambda.Arn}/invocations'
+
+  GuardrailsConnectLambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GuardrailsWebSocketAPI
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ConnectLambda.Arn}/invocations'
+
+  GuardrailsDisconnectLambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GuardrailsWebSocketAPI
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DisconnectLambda.Arn}/invocations'
+
+  GuardrailsBackendLambdaIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref GuardrailsWebSocketAPI
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GuardrailsBackendLambda.Arn}/invocations'
+
+  ## API Gateway Route
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketAPI
+      RouteKey: $connect
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref ConnectLambdaIntegration
+
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketAPI
+      RouteKey: $disconnect
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref DisconnectLambdaIntegration
+
+  DefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketAPI
+      RouteKey: $default
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref BackendLambdaIntegration
+
+  GuardrailsConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GuardrailsWebSocketAPI
+      RouteKey: $connect
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref GuardrailsConnectLambdaIntegration
+
+  GuardrailsDisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GuardrailsWebSocketAPI
+      RouteKey: $disconnect
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref GuardrailsDisconnectLambdaIntegration
+
+  GuardrailsDefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref GuardrailsWebSocketAPI
+      RouteKey: $default
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref GuardrailsBackendLambdaIntegration
+
+  ## Lambda Permission for API Gateway
+  ConnectLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ConnectLambda
+      Principal: apigateway.amazonaws.com
+  
+  DisconnectLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref DisconnectLambda
+      Principal: apigateway.amazonaws.com
+
+  BackendLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref BackendLambda
+      Principal: apigateway.amazonaws.com
+
+  GuardrailsBackendLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref GuardrailsBackendLambda
+      Principal: apigateway.amazonaws.com
+
+  ## API Gateway Deployment
+  Deployment:
+    Type: AWS::ApiGatewayV2::Deployment
+    DependsOn:
+    - ConnectRoute
+    - DisconnectRoute
+    - DefaultRoute
+    Properties:
+      ApiId: !Ref WebSocketAPI
+
+  Stage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      StageName: production
+      DeploymentId: !Ref Deployment
+      ApiId: !Ref WebSocketAPI
+
+  GuardrailsDeployment:
+    Type: AWS::ApiGatewayV2::Deployment
+    DependsOn:
+    - GuardrailsConnectRoute
+    - GuardrailsDisconnectRoute
+    - GuardrailsDefaultRoute
+    Properties:
+      ApiId: !Ref GuardrailsWebSocketAPI
+
+  GuardrailsStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      StageName: production
+      DeploymentId: !Ref GuardrailsDeployment
+      ApiId: !Ref GuardrailsWebSocketAPI
+  
+  ## S3 Bucket for static website
+  StaticWebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-static-website-${AWS::AccountId}'
+      AccessControl: Private
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+
+  ## CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        DefaultCacheBehavior:
+          ViewerProtocolPolicy: redirect-to-https
+          TargetOriginId: S3Origin
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # CachingOptimized
+
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt StaticWebsiteBucket.DomainName
+            OriginAccessControlId: !Ref CloudFrontOriginAccessControl
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+
+  ## Origin Access Control
+  CloudFrontOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties: 
+      OriginAccessControlConfig:
+        Name: !Ref AWS::StackName
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  ## Bucket Policy to allow CloudFront access
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StaticWebsiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: 's3:GetObject'
+            Resource: !Sub '${StaticWebsiteBucket.Arn}/*'
+
+  ## Custom Resource to upload files to S3
+  UploadWebsiteContent:
+    Type: Custom::UploadWebsiteContent
+    Properties:
+      ServiceTimeout: 300
+      ServiceToken: !GetAtt UploadWebsiteFunction.Arn
+      DestinationBucket: !Ref StaticWebsiteBucket
+      SourceBucket: 
+        Fn::FindInMap:
+            - RegionMap
+            - Ref: AWS::Region
+            - WsBucket
+      SourceKey: !Sub '${WorkshopBucketPrefix}/web/webui.zip'
+      WebsocketUrl: !Sub 'wss://${WebSocketAPI}.execute-api.${AWS::Region}.amazonaws.com/production' 
+      GuardrailsWebsocketUrl: !Sub 'wss://${GuardrailsWebSocketAPI}.execute-api.${AWS::Region}.amazonaws.com/production'
+
+  ## Lambda function to upload files
+  UploadWebsiteFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-upload-web-lambda'
+      Handler: index.handler
+      Role: !GetAtt UploadWebsiteFunctionRole.Arn
+      Runtime: python3.12
+      Timeout: 900
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import zipfile
+          import os
+          import tempfile
+          import re
+          import mimetypes
+
+          s3 = boto3.client('s3')
+
+          def handler(event, context):
+            try:
+              request_type = event['RequestType']
+              destination_bucket = event['ResourceProperties']['DestinationBucket']
+              source_bucket = event['ResourceProperties']['SourceBucket']
+              source_key = event['ResourceProperties']['SourceKey']
+              ws_url = event['ResourceProperties']['WebsocketUrl']
+              guardrails_ws_url = event['ResourceProperties']['GuardrailsWebsocketUrl']
+              
+              if request_type == 'Delete':
+                # Empty the destination bucket
+                response = s3.list_objects_v2(Bucket=destination_bucket)
+                if 'Contents' in response:
+                  for item in response['Contents']:
+                    s3.delete_object(Bucket=destination_bucket, Key=item['Key'])
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                return
+              
+              with tempfile.TemporaryDirectory() as tmpdir:
+                zip_path = os.path.join(tmpdir, 'website.zip')
+                s3.download_file(source_bucket, source_key, zip_path)
+                
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                  zip_ref.extractall(tmpdir)
+                
+                for root, dirs, files in os.walk(tmpdir):
+                  for file in files:
+                    file_path = os.path.join(root, file)
+                    s3_key = os.path.relpath(file_path, tmpdir)
+                    
+                    # Skip uploading the original zip file
+                    if file_path == zip_path:
+                        continue
+                    
+                    # Check if the file is a .js file or a .js.map file
+                    if file.endswith('.js') or file.endswith('.js.map'):
+                        # Read the file content
+                        with open(file_path, 'r') as f:
+                            content = f.read()
+
+                        # Replace the string with the actual URL
+                        new_content = re.sub(r'REACT_APP_CONTROL_WEBSOCKET_URL', ws_url, content)
+                        new_content = re.sub(r'REACT_APP_GUARDRAILS_WEBSOCKET_URL', guardrails_ws_url, new_content)
+
+                        # Write the modified content back to the file
+                        with open(file_path, 'w') as f:
+                            f.write(new_content)
+                    
+                    # Get the original file content type
+                    content_type = mimetypes.guess_type(file_path)[0]
+
+                    # Set the content type to application/octet-stream if not detected
+                    if content_type is None:
+                        content_type = 'application/octet-stream'
+
+                    s3.upload_file(file_path, destination_bucket, s3_key, ExtraArgs={'ContentType': content_type})
+              
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+            except Exception as e:
+              print(e)
+              cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  ## IAM Role for Upload Website Function
+  UploadWebsiteFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole      
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+Outputs:
+  CloudFrontDomainName:
+    Description: 'Web App Domain Name'
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  WebSocketAPIEndpoint:
+    Description: 'WebSocket API Endpoint'
+    Value: !GetAtt WebSocketAPI.ApiEndpoint
+  GuardrailsWebSocketAPIEndpoint:
+    Description: 'WebSocket API Endpoint for Inference with Guardrails'
+    Value: !GetAtt GuardrailsWebSocketAPI.ApiEndpoint

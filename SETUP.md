@@ -10,7 +10,7 @@ First you need to create the AWS Account using a new email and your credit card 
 
 Now you should create an AWS Organization and an admin user for that organization (so you only login to that organization with an user different from root).
 
-Create a policy and a role with that policy in IAM so the students have permissions to update the **Lambdas** and create **Guardrails**.
+Create a policy  in IAM so the students have permissions to update the **Lambdas** and create **Guardrails**.
 
 <details>
   
@@ -83,7 +83,7 @@ Create a policy and a role with that policy in IAM so the students have permissi
 ```
 </details>
 
-Create a group in IAM for the Workshop attendees and assign the role previously created.
+Create a group in IAM for the Workshop attendees and assign the policy previously created.
 
 Create an email using Proton Mail or another free email service for the students and invite those emails to the AWS Organization.
 

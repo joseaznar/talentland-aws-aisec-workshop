@@ -10,7 +10,78 @@ First you need to create the AWS Account using a new email and your credit card 
 
 Now you should create an AWS Organization and an admin user for that organization (so you only login to that organization with an user different from root).
 
-Create a role in IAM so the students have permissions to update the **Lambdas** and create **Guardrails**.
+Create a policy and a role with that policy in IAM so the students have permissions to update the **Lambdas** and create **Guardrails**.
+
+<details>
+  
+  <summary>Policy content</summary>
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Stmt1743396266421",
+      "Action": [
+        "bedrock:ApplyGuardrail",
+        "bedrock:CreateGuardrail",
+        "bedrock:CreateGuardrailVersion",
+        "bedrock:DeleteGuardrail",
+        "bedrock:GetGuardrail",
+        "bedrock:ListGuardrails",
+        "bedrock:UpdateGuardrail"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:bedrock:<Region>:<AWS account ID>:*"
+    },
+    {
+      "Sid": "Stmt1743396405521",
+      "Action": [
+        "lambda:CreateAlias",
+        "lambda:GetAccountSettings",
+        "lambda:GetAlias",
+        "lambda:GetCodeSigningConfig",
+        "lambda:GetEventSourceMapping",
+        "lambda:GetFunction",
+        "lambda:GetFunctionCodeSigningConfig",
+        "lambda:GetFunctionConcurrency",
+        "lambda:GetFunctionConfiguration",
+        "lambda:GetFunctionEventInvokeConfig",
+        "lambda:GetFunctionRecursionConfig",
+        "lambda:GetFunctionUrlConfig",
+        "lambda:GetLayerVersion",
+        "lambda:GetLayerVersionPolicy",
+        "lambda:GetPolicy",
+        "lambda:GetProvisionedConcurrencyConfig",
+        "lambda:GetRuntimeManagementConfig",
+        "lambda:InvokeFunction",
+        "lambda:InvokeFunctionUrl",
+        "lambda:ListAliases",
+        "lambda:ListCodeSigningConfigs",
+        "lambda:ListEventSourceMappings",
+        "lambda:ListFunctionEventInvokeConfigs",
+        "lambda:ListFunctionUrlConfigs",
+        "lambda:ListFunctions",
+        "lambda:ListFunctionsByCodeSigningConfig",
+        "lambda:ListLayerVersions",
+        "lambda:ListLayers",
+        "lambda:ListProvisionedConcurrencyConfigs",
+        "lambda:ListTags",
+        "lambda:ListVersionsByFunction",
+        "lambda:PublishLayerVersion",
+        "lambda:PublishVersion",
+        "lambda:UpdateAlias",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:UpdateFunctionUrlConfig"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:lambda:<Region>:<AWS Account ID>:*"
+    }
+  ]
+}
+```
+</details>
 
 Create a group in IAM for the Workshop attendees and assign the role previously created.
 
